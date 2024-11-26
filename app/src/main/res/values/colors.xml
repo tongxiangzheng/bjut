@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="bjut_blue">#0096c3</color>
+
+    <color name="header_background_light">#EEEEEE</color>
+    <color name="cell_background_light">#FFFFFF</color>
+
+    <color name="header_background_dark">#202020</color>
+    <color name="cell_background_dark">#262626</color>
+</resources>

@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">bjut</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">name</string>
+    <string name="nav_header_subtitle">24</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_home">首页</string>
+    <string name="menu_news">通知公告</string>
+    <string name="menu_card">校园一卡通</string>
+    <string name="menu_library">图书馆</string>
+    <string name="menu_schedule">我的课表</string>
+    <string name="menu_otp">VPN OTP</string>
+
+    <string name="shortcut_cardcode">一卡通付款码</string>
+    <string name="shortcut_schedule">课程表</string>
+    <string name="shortcut_otp">VPN OTP</string>
+
+    <string name="app_description">本APP是非官方的，第三方免费开源版本，功能实现完全依赖官方接口，个人数据仅保存在本地。目标是集成所有有用的功能。</string>
+    <string name="app_website">https://github.com/bjutapp/bjut</string>
+</resources>

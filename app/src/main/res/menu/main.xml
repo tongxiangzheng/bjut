@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_clearCache"
+        android:orderInCategory="101"
+        android:title="清除web缓存" />
+    <item
+        android:id="@+id/action_logout"
+        android:orderInCategory="102"
+        android:title="退出登录" />
+    <item
+        android:id="@+id/action_loglook"
+        android:orderInCategory="103"
+        android:title="查看日志" />
+    <item
+        android:id="@+id/action_checkUpdate"
+        android:orderInCategory="104"
+        android:title="检查更新" />
+    <item
+        android:id="@+id/action_about"
+        android:orderInCategory="105"
+        android:title="关于" />
+</menu>

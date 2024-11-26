@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Bjut"
+        tools:targetApi="31"
+        android:usesCleartextTraffic="true">
+        <activity android:name=".ui.LoginActivity" android:exported="true" android:theme="@style/Theme.App.Starting">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Bjut.NoActionBar">
+        </activity>
+        <activity
+            android:name=".ui.news.NewsDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Bjut.NoActionBar"/>
+        <activity
+            android:name=".ui.home.WebVpnViewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Bjut.NoActionBar"/>
+        <activity
+            android:name=".ui.LogViewActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Bjut.NoActionBar"/>
+        <activity
+            android:name=".ui.AboutActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Bjut.NoActionBar"/>
+
+        <activity android:name=".RouterActivity" android:exported="false" android:theme="@style/Theme.App.Starting">
+
+        </activity>
+    </application>
+
+</manifest>

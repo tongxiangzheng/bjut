@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="header_background" format="color" />
+    <attr name="cell_background" format="color" />
+    <attr name="textColor" format="color" />
+</resources>
