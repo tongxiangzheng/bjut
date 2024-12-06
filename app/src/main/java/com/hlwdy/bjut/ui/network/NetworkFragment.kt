@@ -1,12 +1,9 @@
 package com.hlwdy.bjut.ui.network
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import android.net.DnsResolver
 import android.os.Build
@@ -14,7 +11,6 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 
 import com.hlwdy.bjut.databinding.FragmentNetworkBinding
-import okhttp3.Dns
 import java.net.InetAddress
 import java.util.concurrent.Executors
 
@@ -49,7 +45,7 @@ fun checkDnsRecords(domain: String) {
                     for(address in addresses){
                         val ipAddress = address.hostAddress
                         Log.d("normal","Host Address: $ipAddress")
-                        val res=isInternalIp(ipAddress)
+                        val res=isInternalIp(ipAddress!!)
                         if (res) {
                             Log.d("normal","in bjut")
                         }else{
@@ -79,15 +75,6 @@ class NetworkFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    fun showToast(message: String) {
-        activity?.let { fragmentActivity ->
-            Handler(Looper.getMainLooper()).post {
-                if (isAdded) {
-                    Toast.makeText(fragmentActivity, message, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreateView(
