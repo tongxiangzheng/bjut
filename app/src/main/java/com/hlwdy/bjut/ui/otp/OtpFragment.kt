@@ -23,12 +23,13 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.hlwdy.bjut.Base32Encoder
+import com.hlwdy.bjut.OTPManager
 import com.hlwdy.bjut.account_session_util
 import com.hlwdy.bjut.databinding.FragmentOtpBinding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import net.arraynetworks.vpn.OTPManager
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
@@ -185,7 +186,7 @@ class OtpFragment : Fragment() {
             val otpManager = OTPManager()
             val secret = otpD.toString().chunked(2).map { it.toInt(16).toByte() }.toByteArray()
             val otp = otpManager.generateOTP(secret)
-            binding.textOtp.text=String.format("%06d",otp)
+            binding.textOtp.text=otp
         }
     }
 
@@ -275,7 +276,9 @@ class OtpFragment : Fragment() {
                 val userPassword = password.text.toString()
                 val data=generateSM()
                 showToast("请稍后")
-                OTPManager().registerOTP(userAccount,userPassword,String(net.arraynetworks.vpn.NativeLib().encodeOptData(data)),
+                OTPManager().registerOTP(userAccount,userPassword,
+                    //String(net.arraynetworks.vpn.NativeLib().encodeOptData(data)),
+                    Base32Encoder.toBase32(data),
                     object :
                         Callback {
                         override fun onFailure(call: Call, e: IOException) {

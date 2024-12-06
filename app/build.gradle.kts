@@ -13,24 +13,26 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        /*
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-        }
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a","x86","x86_64")
+        }*/
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        /*
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++14")
                 //arguments("-DANDROID_STL=c++_shared")
                 arguments("-DANDROID_STL=none")
             }
-        }
+        }*/
     }
 
     splits {
         abi {
             isEnable = true
             reset()
-            include("armeabi-v7a", "arm64-v8a")
+            include("armeabi-v7a", "arm64-v8a","x86","x86_64")
             isUniversalApk=true
         }
     }
@@ -62,11 +64,12 @@ android {
         viewBinding = true
     }
 
+    /*
     externalNativeBuild {
         cmake {
             path("src/main/cpp/CMakeLists.txt")
         }
-    }
+    }*/
 }
 
 dependencies {

@@ -17,4 +17,4 @@ local.properties
 /app/.cxx
 /app/release
 /app/src/main/cpp
-/app/src/main/jniLibs
+/private

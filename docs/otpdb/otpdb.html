@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP db Decryptor-bjutapp</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+</head>
+<body>
+    <div>
+        <div>
+            <input type="file" id="dbFile" accept=".db"/>
+            <button id="decryptBtn">Decrypt Database</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const IV = new Uint8Array([
+            97, 114, 114, 97, 121, 100, 101, 118, 73, 86,
+            99, 108, 105, 99, 107, 49
+        ]);
+
+        const KEY = new Uint8Array([
+            97, 114, 114, 97, 121, 110, 101, 116, 119, 111,
+            114, 107, 115, 57, 50, 48, 106, 83, 100, 56,
+            102, 42, 35, 57, 42, 100, 45, 35, 106, 48,
+            46, 72
+        ]);
+
+        async function decryptData(encryptedData) {
+            try {
+                const cryptoKey = await window.crypto.subtle.importKey(
+                    "raw",
+                    KEY,
+                    { name: "AES-CBC" },
+                    false,
+                    ["decrypt"]
+                );
+
+                const decrypted = await window.crypto.subtle.decrypt(
+                    {
+                        name: "AES-CBC",
+                        iv: IV
+                    },
+                    cryptoKey,
+                    encryptedData
+                );
+                return new Uint8Array(decrypted);
+            } catch (e) {
+                console.error("Decryption error:", e);
+                return null;
+            }
+        }
+
+        async function processDatabase(file) {
+            const SQL = await initSqlJs({
+                locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+            });
+
+            const buf = await file.arrayBuffer();
+            const db = new SQL.Database(new Uint8Array(buf));
+            const results = db.exec("SELECT * FROM servers");
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (results.length > 0) {
+                for (const row of results[0].values) {
+                    const [id, address, encryptedData, timeDiffer, dynamicInterval] = row;
+                    
+                    const recordDiv = document.createElement('div');
+                    
+                    let content = `
+                        <p><strong>Record ID:</strong> ${id}</p>
+                        <p><strong>Address:</strong> ${address}</p>
+                    `;
+
+                    if (encryptedData) {
+                        const encryptedArray = new Uint8Array(encryptedData);
+                        
+                        const encryptedHex = Array.from(encryptedArray)
+                            .map(b => b.toString(16).padStart(2, '0'))
+                            .join('');
+                        content += `<p><strong>Encrypted data:</strong> ${encryptedHex}</p>`;
+
+                        try {
+                            const decrypted = await decryptData(encryptedArray);
+                            if (decrypted) {
+                                const decryptedHex = Array.from(decrypted)
+                                    .map(b => b.toString(16).padStart(2, '0'))
+                                    .join('');
+                                content += `<p><strong>Decrypted data:</strong> ${decryptedHex}</p>`;
+                            }
+                        } catch (e) {
+                            console.error("Decryption error:", e);
+                            content += `<p>Decryption error: ${e.message}</p>`;
+                        }
+                    }
+                    recordDiv.innerHTML = content;
+                    resultsDiv.appendChild(recordDiv);
+                }
+            } else {
+                resultsDiv.innerHTML = '<p>No data found in database.</p>';
+            }
+
+            db.close();
+        }
+
+        document.getElementById('decryptBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('dbFile');
+            if (fileInput.files.length > 0) {
+                try {
+                    await processDatabase(fileInput.files[0]);
+                } catch (e) {
+                    console.error("Error processing database:", e);
+                    document.getElementById('results').innerHTML = 
+                        `<p>Error processing database: ${e.message}</p>`;
+                }
+            } else {
+                alert('Please select a database file first.');
+            }
+        });
+    </script>
+</body>
+</html>
