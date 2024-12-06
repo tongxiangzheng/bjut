@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.hlwdy.bjut.R
+import com.hlwdy.bjut.RouterActivity
 import com.hlwdy.bjut.account_session_util
 import com.hlwdy.bjut.databinding.FragmentHomeBinding
 
@@ -54,10 +55,13 @@ class HomeFragment : Fragment() {
         }
 
         binding.btnCardCode.setOnClickListener {
-            val bundle = Bundle().apply {
-                putBoolean("jump_code", true)
+            //val bundle = Bundle().apply { putBoolean("jump_code", true) }
+            //findNavController().navigate(R.id.nav_card,bundle)
+            val intent = Intent(requireContext(), RouterActivity::class.java).apply {
+                action = "openCardCode"
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            findNavController().navigate(R.id.nav_card,bundle)
+            startActivity(intent)
         }
 
         return root

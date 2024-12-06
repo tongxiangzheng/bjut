@@ -34,8 +34,10 @@ import com.hlwdy.bjut.BaseFragment
 import com.hlwdy.bjut.appLogger
 import java.net.HttpURLConnection
 import java.util.concurrent.TimeUnit
+import java.util.logging.Logger
 
 private var isJumpCode:Boolean=false
+private var isJumped:Boolean=false
 
 class EnhancedCachingWebViewClient(private val context: Context,private val frag:BaseFragment) : WebViewClient() {
 
@@ -113,6 +115,9 @@ class EnhancedCachingWebViewClient(private val context: Context,private val frag
     }
 
     override fun onPageFinished(view: WebView, url: String) {
+        if(isJumpCode){
+            view.clearHistory()
+        }
         frag.hideLoading()
         account_session_util(context).editCardID(url.takeLast(32))
         // 注入CSS
@@ -130,9 +135,9 @@ class EnhancedCachingWebViewClient(private val context: Context,private val frag
         )
         // 显示WebView
         view.visibility = View.VISIBLE
-        if(isJumpCode){
+        if(isJumpCode&&!isJumped){
             view.loadUrl("https://ydapp.bjut.edu.cn/#/pages_other/qrcode/qrcode/qrcode?openid="+url.takeLast(32))
-            isJumpCode=false
+            isJumped=true
         }
     }
 
@@ -198,6 +203,7 @@ class CardFragment : BaseFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         isJumpCode = arguments?.getBoolean("jump_code", false) ?: false
+        isJumped=false
 
         showLoading()
 

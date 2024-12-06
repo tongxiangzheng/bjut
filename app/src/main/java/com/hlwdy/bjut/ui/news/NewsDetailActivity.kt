@@ -2,37 +2,125 @@ package com.hlwdy.bjut.ui.news
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.transition.Visibility
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.hlwdy.bjut.BaseActivity
 import com.hlwdy.bjut.BjutAPI
 import com.hlwdy.bjut.R
 import com.hlwdy.bjut.account_session_util
-import com.hlwdy.bjut.ui.schedule.Course
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
-class NewsDetailActivity : AppCompatActivity() {
+class NewsDetailActivity : BaseActivity() {
     fun showToast(message: String) {
         android.os.Handler(this.mainLooper).post {
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         }
     }
-    private fun showContent(content:String){
+    fun hideLoad(){
+        android.os.Handler(this.mainLooper).post {
+            hideLoading()
+        }
+    }
+    private fun showContent(content:String,tk:String=""){
         android.os.Handler(this.mainLooper).post {
             var webview=findViewById<WebView>(R.id.news_webview)
             webview.settings.javaScriptEnabled=true
+            //部分资源使用webvpn
+            if(tk!=""){
+                webview.webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        if (request?.url?.host?.endsWith("webvpn.bjut.edu.cn") == true) {
+                            try {
+                                val connection = URL(request.url.toString()).openConnection() as HttpURLConnection
+                                // 添加cookie
+                                connection.setRequestProperty("Cookie", "wengine_vpn_ticketwebvpn_bjut_edu_cn=$tk")
+                                // 复制原始请求
+                                connection.requestMethod = request.method
+                                return WebResourceResponse(
+                                    connection.contentType ?: "text/html",
+                                    connection.contentEncoding ?: "utf-8",
+                                    connection.inputStream
+                                )
+                            } catch (e: Exception) {
+                                showToast("network error")
+                                e.printStackTrace()
+                            }
+                        }
+                        return super.shouldInterceptRequest(view, request)
+                    }
+                }
+            }
+            val Newcontent=content.replace("bgdwzq120.bjut.edu.cn/","webvpn.bjut.edu.cn/https/77726476706e69737468656265737421f2f0458b3d2139022e468ba68d416d30c350f5ad89/")
+                .replace("rsc.bjut.edu.cn/","webvpn.bjut.edu.cn/https/77726476706e69737468656265737421e2e442d2253a7d44300d8db9d6562d/")
             webview.loadDataWithBaseURL(null,
-                "$content <script type=\"text/javascript\">var tables = document.getElementsByTagName(\"img\");for(var i = 0; i<tables.length; i++){tables[i].style.width = \"100%\";tables[i].style.height = \"auto\";}</script>"
+                "$Newcontent <script type=\"text/javascript\">var tables = document.getElementsByTagName(\"img\");for(var i = 0; i<tables.length; i++){tables[i].style.width = \"100%\";tables[i].style.height = \"auto\";}</script>"
                 +"<style>@media (prefers-color-scheme: dark) { body,span{ background-color: #121212 !important; color: #cfcfcf  !important; } p{ background-color: #121212 !important; } }table { border-color: #333 !important; } th, td { border-color: #333 !important; }</style>",
                 "text/html", "UTF-8", null)
+        }
+    }
+
+    private fun showAttachment(l: JSONArray){
+        android.os.Handler(this.mainLooper).post {
+            findViewById<FloatingActionButton>(R.id.attachmentButton).visibility= View.VISIBLE
+            findViewById<FloatingActionButton>(R.id.attachmentButton).setOnClickListener {
+                val container = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    setPadding(32, 16, 32, 16)
+                }
+
+                for (i in 0 until l.length()) {
+                    val classObject = l.getJSONObject(i)
+                    val name = classObject.getString("name")
+                    val url = classObject.getString("path")
+                    MaterialButton(this).apply {
+                        text = "$name"
+                        setOnClickListener {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                        }
+                        isAllCaps = false
+                        container.addView(this)
+                    }
+                }
+
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("新闻附件")
+                    .setView(container)
+                    .setNegativeButton("关闭") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .show()
+            }
         }
     }
 
@@ -42,19 +130,26 @@ class NewsDetailActivity : AppCompatActivity() {
 
         val title = intent.getStringExtra(EXTRA_TITLE)
         val id = intent.getStringExtra(EXTRA_ID)
-        
-        BjutAPI().getNewsDetail(account_session_util(this).getUserDetails()[account_session_util.KEY_WEBVPNTK].toString(),id.toString(),object :
+        val tk=account_session_util(this).getUserDetails()[account_session_util.KEY_WEBVPNTK].toString()
+
+        showLoading()
+        BjutAPI().getNewsDetail(tk,id.toString(),object :
             Callback {
             override fun onFailure(call: Call, e: IOException) {
+                hideLoad()
                 showToast("network error")
             }
             override fun onResponse(call: Call, response: Response) {
+                hideLoad()
                 try{
                     val res=JSONObject(response.body?.string().toString())
-                    showContent(res.toString())
                     if(res.getString("e")=="0"){
-                        showContent(res.getJSONObject("d").getString("content"))
+                        showContent(res.getJSONObject("d").getString("content"),tk)
+                        if(res.getJSONObject("d").getString("newsfile")!=""){
+                            showAttachment(res.getJSONObject("d").getJSONArray("newsfile"))
+                        }
                     }else{
+                        showContent(res.toString())
                         showToast("error")
                     }
                 }catch (e:Exception){
