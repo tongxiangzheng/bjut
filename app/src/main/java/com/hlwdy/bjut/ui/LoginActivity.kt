@@ -8,8 +8,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.os.Bundle
-import android.text.method.HideReturnsTransformationMethod
-import android.text.method.PasswordTransformationMethod
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -22,6 +20,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.hlwdy.bjut.BaseActivity
 import com.hlwdy.bjut.BjutAPI
 import com.hlwdy.bjut.BjutHttpRsa
 import com.hlwdy.bjut.MainActivity
@@ -36,13 +35,12 @@ import okhttp3.*
 import java.io.IOException
 import org.json.JSONObject
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : BaseActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
 
     private lateinit var usernameEditText: EditText
     private lateinit var passwordEditText: EditText
     private lateinit var loginButton: Button
-    private lateinit var togglePasswordVisibility: ImageButton
     private lateinit var rememberPasswordCheckBox: CheckBox
 
     private lateinit var overlayView: View
@@ -57,6 +55,11 @@ class LoginActivity : AppCompatActivity() {
     fun finishLogin(usname: String,name: String,tk: String,ses: String) {
         android.os.Handler(this.mainLooper).post {
             account_session_util(this).createLoginSession(usname, name, tk, ses)
+        }
+    }
+    fun hideLoad(){
+        android.os.Handler(this.mainLooper).post {
+            hideLoading()
         }
     }
 
@@ -152,21 +155,7 @@ class LoginActivity : AppCompatActivity() {
                 usernameEditText = findViewById(R.id.usernameEditText)
                 passwordEditText = findViewById(R.id.passwordEditText)
                 loginButton = findViewById(R.id.loginButton)
-                togglePasswordVisibility = findViewById(R.id.togglePasswordVisibility)
                 rememberPasswordCheckBox = findViewById(R.id.rememberPasswordCheckBox)
-
-                var passwordVisible = false
-                togglePasswordVisibility.setOnClickListener {
-                    passwordVisible = !passwordVisible
-                    if (passwordVisible) {
-                        passwordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
-                        togglePasswordVisibility.setImageResource(android.R.drawable.ic_menu_view) // 使用"隐藏"图标
-                    } else {
-                        passwordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
-                        togglePasswordVisibility.setImageResource(android.R.drawable.ic_menu_view) // 使用"显示"图标
-                    }
-                    passwordEditText.setSelection(passwordEditText.text.length)
-                }
 
                 sharedPreferences = getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
                 if (sharedPreferences.getBoolean("remember_password", false)) {
@@ -176,6 +165,7 @@ class LoginActivity : AppCompatActivity() {
                 }
 
                 loginButton.setOnClickListener {
+                    showLoading()
                     val usname = usernameEditText.text.toString()
                     val password = passwordEditText.text.toString()
 
@@ -197,9 +187,11 @@ class LoginActivity : AppCompatActivity() {
 
                     BjutAPI().login(usname,password,object : Callback {
                         override fun onFailure(call: Call, e: IOException) {
+                            hideLoad()
                             showToast("network error")
                         }
                         override fun onResponse(call: Call, response: Response) {
+                            hideLoad()
                             //showToast(BjutHttpRsa.requestDecrypt(response.body?.string().toString()))
                             val res = JSONObject(
                                 BjutHttpRsa.requestDecrypt(
