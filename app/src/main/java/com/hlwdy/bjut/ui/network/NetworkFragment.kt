@@ -152,7 +152,7 @@ class NetworkFragment : Fragment() {
                 networkLoginStates = false
             }
         }catch (e:Exception){
-
+            networkLoginStates = false
         }
 
     }
