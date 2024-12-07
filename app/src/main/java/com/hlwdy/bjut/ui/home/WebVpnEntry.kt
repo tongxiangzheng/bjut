@@ -34,6 +34,7 @@ class WebVpnViewActivity : AppCompatActivity() {
         //https://jwglxt.bjut.edu.cn/
         Website("网络计费系统", "https://webvpn.bjut.edu.cn/https/77726476706e69737468656265737421faf152992b362652741d9de29d51367b6c5c/"),
         //https://jfself.bjut.edu.cn/
+        Website("图书馆资源","https://webvpn.bjut.edu.cn/https/77726476706e69737468656265737421fcfe43862e297d5170468ba68d416d30b4b1ee2861/"),
         Website("EduOJ", "https://webvpn.bjut.edu.cn/http/77726476706e69737468656265737421a1a013d2756126012946d8fccc/"),
         //http://172.21.17.104/
     )

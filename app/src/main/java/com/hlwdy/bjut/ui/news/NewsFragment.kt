@@ -136,6 +136,11 @@ class NewsFragment : BaseFragment() {
             refreshNewsList("1")
             viewModel.isFirstLoad = false
         }
+
+        binding.swipeRefresh.setOnRefreshListener {
+            refreshNewsList((tabLayout.selectedTabPosition.plus(1)).toString())
+            binding.swipeRefresh.isRefreshing = false
+        }
     }
 
     private var isLoading = false

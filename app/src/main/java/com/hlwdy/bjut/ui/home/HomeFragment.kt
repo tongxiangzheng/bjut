@@ -47,6 +47,7 @@ class HomeFragment : Fragment() {
         binding.btnWebVpn.setOnClickListener {
             val cookieManager = CookieManager.getInstance()
             cookieManager.setAcceptCookie(true)
+            cookieManager.removeSessionCookies(null)
             cookieManager.setCookie(".webvpn.bjut.edu.cn", "wengine_vpn_ticketwebvpn_bjut_edu_cn="+
                     account_session_util(requireContext()).getUserDetails()[account_session_util.KEY_WEBVPNTK].toString()+"; path=/")
             cookieManager.flush()
