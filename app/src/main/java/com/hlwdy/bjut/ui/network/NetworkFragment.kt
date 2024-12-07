@@ -5,14 +5,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import android.net.DnsResolver
-import android.os.Build
-import android.util.Log
-import androidx.annotation.RequiresApi
+import android.os.Handler
+import android.os.Looper
+import androidx.lifecycle.lifecycleScope
+
+import java.net.HttpURLConnection
+import java.net.URL
+
 
 import com.hlwdy.bjut.databinding.FragmentNetworkBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.InetAddress
-import java.util.concurrent.Executors
+import org.json.JSONObject
+
 
 fun isInternalIp(ip: String): Boolean {
     val privateIpPatterns = listOf(
@@ -22,46 +29,45 @@ fun isInternalIp(ip: String): Boolean {
     )
     return privateIpPatterns.any { it.matches(ip) }
 }
-@RequiresApi(Build.VERSION_CODES.Q)
-fun checkDnsRecords(domain: String) {
-    try {
-        val executor = Executors.newSingleThreadExecutor()
-        val resolver = DnsResolver.getInstance()
-        resolver.query(
-            null,
-            domain,
-            DnsResolver.TYPE_A,
-            DnsResolver.FLAG_NO_CACHE_LOOKUP,
-            executor,
-            null,
-            object : DnsResolver.Callback<List<InetAddress>> {
-                override fun onAnswer(
-                    addresses: List<InetAddress>,
-                    rCode: Int,
-                ) {
-                    if (addresses.isEmpty()){
-                        Log.w("Error","check bjut dns record with no result")
-                    }
-                    for(address in addresses){
-                        val ipAddress = address.hostAddress
-                        Log.d("normal","Host Address: $ipAddress")
-                        val res=isInternalIp(ipAddress!!)
-                        if (res) {
-                            Log.d("normal","in bjut")
-                        }else{
-                            Log.d("normal","NOT in bjut")
-                        }
-                    }
-                }
+fun checkWebsiteAccessibility(urlString: String): Boolean {
+    return try {
+        val url = URL(urlString)
+        val connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout=1000
+        connection.readTimeout=1000
+        connection.connect()
 
-                override fun onError(e: DnsResolver.DnsException) {
-                    //错误处理
-                }
-            },
-        )
-
+        val responseCode = connection.responseCode
+        connection.disconnect()
+        responseCode == HttpURLConnection.HTTP_OK
     } catch (e: Exception) {
-        Log.w("Error","message: ${e.message}")
+        e.printStackTrace()
+        false
+    }
+}
+
+suspend fun getJsonFromUrl(urlString: String): String? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val inputStream = connection.inputStream
+                inputStream.bufferedReader().use { reader ->
+                    return@withContext reader.readText()
+                }
+            } else {
+                // 处理错误响应
+                println("Error: ${connection.responseCode}")
+                return@withContext null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return@withContext null
+        }
     }
 }
 
@@ -70,23 +76,159 @@ fun checkDnsRecords(domain: String) {
 class NetworkFragment : Fragment() {
 
     private var _binding: FragmentNetworkBinding? = null
-
+    private var networkStates="unknown"
+    private var networkLoginStates=false
+    val handler = Handler(Looper.getMainLooper())
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+    private fun updateShow(){
+        when(networkStates){
+            "unknown"->binding.networkStateMonitor.setText("网络状态未知")
+            "wifi"->binding.networkStateMonitor.setText("bjut_wifi")
+            "dorm"->binding.networkStateMonitor.setText("宿舍光猫")
+            "bjut"->binding.networkStateMonitor.setText("有线网（你是怎么做到的？）")
+            "outBJUT"->binding.networkStateMonitor.setText("校外")
+            "unknownType"->binding.networkStateMonitor.setText("未知校内网络")
+            else->binding.networkStateMonitor.setText("error: $networkStates")
+        }
+        if(networkLoginStates){
+            binding.networkLoginStateMonitor.setText("已登录")
+        }else{
+            binding.networkLoginStateMonitor.setText("未登录")
+        }
+    }
+    private fun checkBjutLocation(){
+        //测试是否为bjut_wifi
+        val wres= checkWebsiteAccessibility("http://wlgn.bjut.edu.cn")
+        if(wres){
+            networkStates="wifi"
+            return
+        }
+        //测试是否为宿舍光猫
+        val bres= checkWebsiteAccessibility("http://10.21.221.98")
+        if(bres){
+            networkStates="dorm"
+            return
+        }
+        //测试是否为其他情况（例如有线网）
+        val res= checkWebsiteAccessibility("http://lgn.bjut.edu.cn")
+        if(res){
+            networkStates="bjut"
+            return
+        }
+        networkStates="unknownType"
+    }
+    private fun checkLoginStatus() {
+        //val host = getServiceHost()
+        //val timestamp = Instant.now().epochSecond
+        //val urlString = "http://${host}/drcom/chkstatus?callback=dr${timestamp}"123"
+        val urlString=when(networkStates){
+            "wifi"->"https://wlgn.bjut.edu.cn"
+            "dorm"->"http://10.21.221.98:801/eportal/portal/online_list"
+            "bjut"->"lgn.bjut.edu.cn"
+            else->""
+        }
+        if(urlString==""){
+            networkLoginStates=false
+            return
+        }
+        lifecycleScope.launch {
+            val jsonString = getJsonFromUrl(urlString)
+            if (jsonString != null) {
+                val jsonObject = JSONObject(jsonString)
+                networkLoginStates = jsonObject.getInt("result")==1
+            } else {
+                networkLoginStates=false
+            }
+        }
+    }
+    private fun checkNetworkStates() {
+        val domain="bjut.edu.cn"
+        lifecycleScope.launch {
+            val success = withContext(Dispatchers.IO) {
+                try {
+                    val address = InetAddress.getByName(domain)
+                    if (isInternalIp(address.hostAddress!!)) {
+                        checkBjutLocation()
+                        checkLoginStatus()
+                    }else {
+                        networkStates = "outBJUT"
+                        networkLoginStates = false
+                    }
+                    true
+                } catch (e: Exception) {
+                    false
+                }
+            }
+
+            // 在主线程更新 UI
+            if(success){
+                updateShow()
+            }
+        }
 
 
-    @RequiresApi(Build.VERSION_CODES.Q)
+
+        /*val domain="bjut.edu.cn"
+        try {
+            val executor = Executors.newSingleThreadExecutor()
+            val resolver = DnsResolver.getInstance()
+            resolver.query(
+                null,
+                domain,
+                DnsResolver.TYPE_A,
+                DnsResolver.FLAG_NO_CACHE_LOOKUP,
+                executor,
+                null,
+                object : DnsResolver.Callback<List<InetAddress>> {
+                    override fun onAnswer(
+                        addresses: List<InetAddress>,
+                        rCode: Int,
+                    ) {
+                        if (addresses.isEmpty()){
+                            Log.w("Error","check bjut dns record with no result")
+                        }
+                        networkStates="outBJUT"
+                        networkLoginStates=false
+                        for(address in addresses){
+                            val ipAddress = address.hostAddress
+                            Log.d("normal","Host Address: $ipAddress")
+                            val res=isInternalIp(ipAddress!!)
+                            if (res) {
+                                //确认具体位置
+                                checkBjutLocation()
+                            }
+                        }
+                        updateShow()
+                    }
+
+                    override fun onError(e: DnsResolver.DnsException) {
+                        Toast.makeText(context, "error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                },
+            )
+
+        } catch (e: Exception) {
+
+            Toast.makeText(context, "error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }*/
+    }
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        checkDnsRecords("bjut.edu.cn")
         _binding = FragmentNetworkBinding.inflate(inflater, container, false)
+        checkNetworkStates()
         val root: View = binding.root
+        binding.btnLogin.setOnClickListener {
 
+        }
 
+        binding.btnSetPwd.setOnClickListener {
+
+        }
 
         return root
     }
