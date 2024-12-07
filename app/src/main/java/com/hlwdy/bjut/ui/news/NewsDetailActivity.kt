@@ -2,21 +2,27 @@ package com.hlwdy.bjut.ui.news
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.RippleDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.TextUtils
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.transition.Visibility
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.hlwdy.bjut.BaseActivity
@@ -94,32 +100,98 @@ class NewsDetailActivity : BaseActivity() {
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     )
-                    setPadding(32, 16, 32, 16)
+                    setPadding(24, 8, 24, 8)
                 }
 
                 for (i in 0 until l.length()) {
                     val classObject = l.getJSONObject(i)
                     val name = classObject.getString("name")
                     val url = classObject.getString("path")
-                    MaterialButton(this).apply {
-                        text = "$name"
+
+                    // 创建一个水平布局来包含图标和文件名
+                    val itemLayout = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            setMargins(0, 10, 0, 10)  // 设置每个项目之间的间距
+                        }
+                        gravity = Gravity.CENTER_VERTICAL
+                    }
+
+                    // 添加文件图标
+                    ImageView(this).apply {
+                        setImageResource(R.drawable.baseline_attach_file_24)
+                        imageTintList = context.getColorStateList(
+                            context.theme.obtainStyledAttributes(
+                                intArrayOf(android.R.attr.colorControlNormal)
+                            ).getResourceId(0, 0)
+                        )
+                        layoutParams = LinearLayout.LayoutParams(48, 48).apply {
+                            marginEnd = 16
+                        }
+                        itemLayout.addView(this)
+                    }
+
+                    // 文件名和信息的垂直布局
+                    val textContainer = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f // 权重为1，占据剩余空间
+                        )
+                    }
+
+                    // 文件名 TextView
+                    TextView(this).apply {
+                        text = name
+                        textSize = 16f
+                        maxLines = 3
+                        ellipsize = TextUtils.TruncateAt.END
+                        textContainer.addView(this)
+                    }
+
+                    itemLayout.addView(textContainer)
+
+                    // 添加点击效果
+                    itemLayout.apply {
+                        background = RippleDrawable(
+                            ColorStateList.valueOf(getColor(TypedValue().apply {
+                                theme.resolveAttribute(android.R.attr.colorControlHighlight, this, true)
+                            }.resourceId)),
+                            null,
+                            ColorDrawable(Color.WHITE)
+                        )
+                        isClickable = true
+                        isFocusable = true
                         setOnClickListener {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             startActivity(intent)
                         }
-                        isAllCaps = false
-                        container.addView(this)
                     }
+
+                    container.addView(itemLayout)
                 }
+
+                val scrollView = ScrollView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                }
+                scrollView.addView(container)
 
                 MaterialAlertDialogBuilder(this)
                     .setTitle("新闻附件")
-                    .setView(container)
+                    .setView(scrollView)
                     .setNegativeButton("关闭") { dialog, _ ->
                         dialog.dismiss()
                     }
                     .show()
+
             }
         }
     }

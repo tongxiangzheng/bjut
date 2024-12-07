@@ -7,6 +7,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.WindowManager
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import com.google.android.material.navigation.NavigationView
@@ -168,14 +169,12 @@ class MainActivity : AppCompatActivity() {
                 // 版本信息
                 TextView(this).apply {
                     text = """  
-                    当前版本：$Curversion  
-                    新版本发布日期：${res.getString("published_at")}  
-                    
-                    更新内容：  
-                    ${res.getString("body")}  
-                    
-                    可用下载：  
-                """.trimIndent()
+当前版本：$Curversion
+新版本发布日期：${res.getString("published_at")}
+    更新内容：
+${res.getString("body")}
+可用下载：  
+""".trimIndent()
                     container.addView(this)
                 }
 
@@ -203,9 +202,17 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                val scrollView = ScrollView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                }
+                scrollView.addView(container)
+
                 MaterialAlertDialogBuilder(this)
                     .setTitle("发现新版本:" + res.getString("tag_name"))
-                    .setView(container)
+                    .setView(scrollView)
                     .setNegativeButton("稍后再说") { dialog, _ ->
                         dialog.dismiss()
                     }
