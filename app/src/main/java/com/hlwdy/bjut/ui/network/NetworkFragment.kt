@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.lifecycle.lifecycleScope
 
 import java.net.HttpURLConnection
@@ -36,38 +37,43 @@ fun checkWebsiteAccessibility(urlString: String): Boolean {
         connection.requestMethod = "GET"
         connection.connectTimeout=1000
         connection.readTimeout=1000
+        connection.instanceFollowRedirects=false
         connection.connect()
 
         val responseCode = connection.responseCode
-        connection.disconnect()
-        responseCode == HttpURLConnection.HTTP_OK
+        if(responseCode == HttpURLConnection.HTTP_OK){
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            Log.d("normal","response: "+response)
+            response.isNotEmpty()
+        }else{
+            connection.disconnect()
+            false
+        }
     } catch (e: Exception) {
         false
     }
 }
 
-suspend fun getJsonFromUrl(urlString: String): String? {
-    return withContext(Dispatchers.IO) {
-        try {
-            val url = URL(urlString)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                val inputStream = connection.inputStream
-                inputStream.bufferedReader().use { reader ->
-                    return@withContext reader.readText()
-                }
-            } else {
-                // 处理错误响应
-                println("Error: ${connection.responseCode}")
-                return@withContext null
+fun getJsonFromUrl(urlString: String): String? {
+    try {
+        val url = URL(urlString)
+        val connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val inputStream = connection.inputStream
+            inputStream.bufferedReader().use { reader ->
+                return reader.readText()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return@withContext null
+        } else {
+            // 处理错误响应
+            println("Error: ${connection.responseCode}")
+            return null
         }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
     }
+
 }
 
 
@@ -123,7 +129,7 @@ class NetworkFragment : Fragment() {
         //val timestamp = Instant.now().epochSecond
         //val urlString = "http://${host}/drcom/chkstatus?callback=dr${timestamp}"123"
         val urlString=when(networkStates){
-            "wifi"->"https://wlgn.bjut.edu.cn"
+            "wifi"->"https://wlgn.bjut.edu.cn/drcom/chkstatus?callback=dr1002"
             "dorm"->"http://10.21.221.98:801/eportal/portal/online_list"
             "bjut"->"lgn.bjut.edu.cn"
             else->""
@@ -132,15 +138,23 @@ class NetworkFragment : Fragment() {
             networkLoginStates=false
             return
         }
-        lifecycleScope.launch {
-            val jsonString = getJsonFromUrl(urlString)
-            if (jsonString != null) {
-                val jsonObject = JSONObject(jsonString)
-                networkLoginStates = jsonObject.getInt("result")==1
-            } else {
-                networkLoginStates=false
-            }
+        val resString = getJsonFromUrl(urlString)
+        if(resString == null){
+            networkLoginStates=false
+            return
         }
+        try {
+            val jsonString=resString.substringAfter("(").substringBeforeLast(")")
+            if (jsonString != "") {
+                val jsonObject = JSONObject(jsonString)
+                networkLoginStates = (jsonObject.getInt("result") == 1)
+            } else {
+                networkLoginStates = false
+            }
+        }catch (e:Exception){
+
+        }
+
     }
     private fun checkNetworkStates() {
         val domain="bjut.edu.cn"
@@ -160,58 +174,10 @@ class NetworkFragment : Fragment() {
                     false
                 }
             }
-
-            // 在主线程更新 UI
             if(success){
                 updateShow()
             }
         }
-
-
-
-        /*val domain="bjut.edu.cn"
-        try {
-            val executor = Executors.newSingleThreadExecutor()
-            val resolver = DnsResolver.getInstance()
-            resolver.query(
-                null,
-                domain,
-                DnsResolver.TYPE_A,
-                DnsResolver.FLAG_NO_CACHE_LOOKUP,
-                executor,
-                null,
-                object : DnsResolver.Callback<List<InetAddress>> {
-                    override fun onAnswer(
-                        addresses: List<InetAddress>,
-                        rCode: Int,
-                    ) {
-                        if (addresses.isEmpty()){
-                            Log.w("Error","check bjut dns record with no result")
-                        }
-                        networkStates="outBJUT"
-                        networkLoginStates=false
-                        for(address in addresses){
-                            val ipAddress = address.hostAddress
-                            Log.d("normal","Host Address: $ipAddress")
-                            val res=isInternalIp(ipAddress!!)
-                            if (res) {
-                                //确认具体位置
-                                checkBjutLocation()
-                            }
-                        }
-                        updateShow()
-                    }
-
-                    override fun onError(e: DnsResolver.DnsException) {
-                        Toast.makeText(context, "error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                },
-            )
-
-        } catch (e: Exception) {
-
-            Toast.makeText(context, "error: ${e.message}", Toast.LENGTH_SHORT).show()
-        }*/
     }
     override fun onCreateView(
         inflater: LayoutInflater,
