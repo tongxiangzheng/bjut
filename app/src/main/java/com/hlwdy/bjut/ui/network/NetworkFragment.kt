@@ -42,7 +42,6 @@ fun checkWebsiteAccessibility(urlString: String): Boolean {
         connection.disconnect()
         responseCode == HttpURLConnection.HTTP_OK
     } catch (e: Exception) {
-        e.printStackTrace()
         false
     }
 }
