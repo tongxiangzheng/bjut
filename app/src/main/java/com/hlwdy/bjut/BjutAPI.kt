@@ -157,4 +157,40 @@ class BjutAPI {
             .addHeader("User-Agent","ZhilinEai ZhilinBjutApp/2.5")
             .get("https://webvpn.bjut.edu.cn/https/77726476706e69737468656265737421e0f85388263c2652741d9de29d51367b7cd8/site/get_news_detail?id=$id",true,callback)
     }
+
+    fun getBookList(text: String,code:String,base:String,callback: Callback){
+        HttpUtils().addHeader("Cookie","")
+            .addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+            .addParam("func","find-b")
+            .addParam("find_code",code)
+            .addParam("local_base",base)
+            .addParam("request",text)
+            .post("https://libaleph.bjut.edu.cn/F",
+                object :
+                    Callback {
+                    override fun onFailure(call: Call, e: IOException) {
+                        callback.onFailure(call,e)
+                    }
+                    override fun onResponse(call: Call, response: Response) {
+                        var res=response.body?.string().toString()
+                        var url = "https?://libaleph\\.bjut\\.edu\\.cn[^\\s'\"]+".toRegex().find(res)?.value.toString()
+                        HttpUtils()
+                            .addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+                            .get(url,true,
+                                object :
+                                    Callback {
+                                    override fun onFailure(call: Call, e: IOException) {
+                                        callback.onFailure(call,e)
+                                    }
+                                    override fun onResponse(call: Call, response: Response) {
+                                        res=response.body?.string().toString()
+                                        url = "location\\s*=\\s*'(.*?)'".toRegex().find(res)?.groupValues?.get(1).toString()
+                                        url="https://libaleph.bjut.edu.cn"+url.replace("&amp;","&")
+                                        HttpUtils()
+                                            .addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+                                            .get(url,true,callback)
+                                    } })
+                    } }
+            )
+    }
 }

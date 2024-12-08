@@ -45,6 +45,10 @@
             android:name=".ui.AboutActivity"
             android:exported="false"
             android:theme="@style/Theme.Bjut.NoActionBar"/>
+        <activity
+            android:name=".ui.library.BookDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Bjut.NoActionBar"/>
 
         <activity android:name=".RouterActivity" android:exported="false" android:theme="@style/Theme.App.Starting">
 
