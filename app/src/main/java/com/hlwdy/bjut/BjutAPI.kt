@@ -139,7 +139,7 @@ class BjutAPI {
                         callback.onFailure(call,e)
                     }
                     override fun onResponse(call: Call, response: Response) {
-                        var newUrl= response.headers["Location"].toString()
+                        val newUrl= response.headers["Location"].toString()
                         if(newUrl=="null"){
                             callback.onFailure(call,IOException("no tk"))
                             return
@@ -193,4 +193,17 @@ class BjutAPI {
                     } }
             )
     }
+
+    fun getCardInfo(id: String,callback: Callback){
+        HttpUtils().addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+            .get("https://ydapp.bjut.edu.cn/home/openHomePageApp?openid=$id",true,callback)
+    }
+
+    fun getBookBorrow(ses: String,callback: Callback){
+        HttpUtils().addHeader("Cookie","eai-sess=$ses;")
+            .addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+            .addHeader("Referer","https://itsapp.bjut.edu.cn/site/library/history")
+            .get("https://itsapp.bjut.edu.cn/borrow/wap/default/info?title=",true,callback)
+    }
+
 }

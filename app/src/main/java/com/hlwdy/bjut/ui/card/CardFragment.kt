@@ -10,6 +10,7 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebViewClient
@@ -32,12 +33,15 @@ import android.webkit.WebView
 import androidx.core.content.ContextCompat.startActivity
 import com.hlwdy.bjut.BaseFragment
 import com.hlwdy.bjut.appLogger
+import okhttp3.Cookie
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.util.concurrent.TimeUnit
-import java.util.logging.Logger
 
 private var isJumpCode:Boolean=false
 private var isJumped:Boolean=false
+
+private var isNeedNewID:Boolean=false
 
 class EnhancedCachingWebViewClient(private val context: Context,private val frag:BaseFragment) : WebViewClient() {
 
@@ -119,7 +123,12 @@ class EnhancedCachingWebViewClient(private val context: Context,private val frag
             view.clearHistory()
         }
         frag.hideLoading()
-        account_session_util(context).editCardID(url.takeLast(32))
+        if(isNeedNewID){
+            val cardid=url.takeLast(32)
+            appLogger.e("Info", "NewCard:$cardid")
+            account_session_util(context).editCardID(cardid)
+            isNeedNewID=false
+        }
         // 注入CSS
         val css = "@media (prefers-color-scheme: dark) { body,uni-page-body,.bdbg1,.code-bg,.news-w-bg,.bdbg,.ticket-nav,.tap2{ background: #121212 !important; }uni-navigator,.menu-list,.news-w,.payment-method,.condition, .condition-checkbox,.amtbutton,.v-tabs__container,.v-tabs__container-item,.tr,.nowcode,.tap-box,.uni-picker-select,.uni-picker-header,.newsCol,.text-w,.txt,.itemArea_li,#popup_content{background:#313131 !important;color:white !important;}uni-text{color:white !important}.code-w{box-shadow:none !important;}.news-w,.newsli{border-bottom:none !important;}.bdbg1,uni-view{color:white !important}.bdt{border-top: 1px solid #555555 !important;}.per-details,.bor-bottom{border-bottom: 1px solid #555555 !important;}}"
         view.evaluateJavascript(
@@ -219,16 +228,41 @@ class CardFragment : BaseFragment() {
         })
 
         if(!viewModel.isWebViewInitialized){
-            BjutAPI().getCardUrl(account_session_util(requireContext()).getUserDetails()[account_session_util.KEY_SESS].toString(),object : Callback {
+            var cardid=account_session_util(requireContext()).getUserDetails()[account_session_util.KEY_CARDID].toString()
+            BjutAPI().getCardInfo(cardid,object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     showToast("network error")
                 }
                 override fun onResponse(call: Call, response: Response) {
-                    if(response.code==302){
-                        val cardUrl= response.headers["Location"].toString()
-                        //showToast(cardUrl)
-                        appLogger.e("Info", "CardUrl ok:$cardUrl")
-                        loadUrl(cardUrl)
+                    val res=JSONObject(response.body?.string().toString())
+                    if(res.getString("success")=="true"&&res.getString("data")!="null"){
+                        val tk=Cookie.parseAll(response.request.url,response.headers).find { it.name == "JSESSIONID" }?.value.toString()
+                        appLogger.e("Info", "CardLoad ok:$tk")
+                        val cookieManager = CookieManager.getInstance()
+                        cookieManager.setAcceptCookie(true)
+                        //cookieManager.removeSessionCookies(null)
+                        cookieManager.setCookie("ydapp.bjut.edu.cn", "JSESSIONID=$tk; path=/")
+                        cookieManager.flush()
+                        if(isJumpCode){
+                            isJumped=true
+                            loadUrl("https://ydapp.bjut.edu.cn/#/pages_other/qrcode/qrcode/qrcode?openid=$cardid")
+                        }else{
+                            loadUrl("https://ydapp.bjut.edu.cn/#/pages/homepage/index/index?openid=$cardid")
+                        }
+                    }else{
+                        BjutAPI().getCardUrl(account_session_util(requireContext()).getUserDetails()[account_session_util.KEY_SESS].toString(),object : Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+                                showToast("network error")
+                            }
+                            override fun onResponse(call: Call, response: Response) {
+                                if(response.code==302){
+                                    val cardUrl= response.headers["Location"].toString()
+                                    //showToast(cardUrl)
+                                    isNeedNewID=true
+                                    loadUrl(cardUrl)
+                                }
+                            }
+                        })
                     }
                 }
             })
