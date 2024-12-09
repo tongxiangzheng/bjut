@@ -81,16 +81,36 @@ fun getDataFromUrl(urlString: String): String? {
         return null
     }
 }
-private fun checkBjutLocation():String{
-    //测试是否为bjut_wifi
-    val wres= checkWebsiteAccessibility("http://wlgn.bjut.edu.cn")
-    if(wres){
-        return "wifi"
+fun postUrl(urlString: String): String? {
+    try {
+        val url = URL(urlString)
+        val connection = url.openConnection() as HttpURLConnection
+        connection.requestMethod = "POST"
+        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val inputStream = connection.inputStream
+            inputStream.bufferedReader().use { reader ->
+                return reader.readText()
+            }
+        } else {
+            // 处理错误响应
+            println("Error: ${connection.responseCode}")
+            return null
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
     }
+}
+private fun checkBjutLocation():String{
     //测试是否为宿舍光猫
     val bres= checkWebsiteAccessibility("http://10.21.221.98")
     if(bres){
         return "dorm"
+    }
+    //测试是否为bjut_wifi
+    val wres= checkWebsiteAccessibility("http://wlgn.bjut.edu.cn")
+    if(wres){
+        return "wifi"
     }
     //测试是否为其他情况（例如有线网）
     val res= checkWebsiteAccessibility("http://lgn.bjut.edu.cn")
@@ -102,7 +122,6 @@ private fun checkBjutLocation():String{
 fun checkLoginStatusBjut():Boolean {
     val urlString="https://lgn.bjut.edu.cn"
     val htmlData=getDataFromUrl(urlString)?:return false
-    Log.d("normal", "html: $htmlData")
     return htmlData.contains("<!--Dr.COMWebLoginID_1.htm-->")
 }
 fun checkLoginStatusDormOrWifi(networkStates:String):Boolean {
@@ -132,13 +151,43 @@ fun checkLoginStatus(networkStates:String):Boolean {
         else->false
     }
 }
+fun bjutNetworkLoginDorm(networkAccount: network_account_util):Boolean{
+    val user=networkAccount.getUserName()
+    val pwd=networkAccount.getUserPwd()
+    val urlString="http://10.21.221.98:801/eportal/?c=Portal&a=login&login_method=1&user_account=$user%40campus&user_password=$pwd"
 
-
+    val resString=getDataFromUrl(urlString)?:"jsonpReturn({\"result\":0})"
+    val jsonString=resString.substringAfter("(").substringBeforeLast(")")
+    if (jsonString != "") {
+        val jsonObject = JSONObject(jsonString)
+        return (jsonObject.getInt("result") == 1)
+    } else {
+        return false
+    }
+}
+fun bjutNetworkLoginWifi(networkAccount: network_account_util):Boolean{
+    val user=networkAccount.getUserName()
+    val pwd=networkAccount.getUserPwd()
+    val urlString="http://wlgn.bjut.edu.cn/drcom/login?callback=dr1002&DDDDD=${user}&upass=${pwd}&0MKKey=123456&R1=0&R2=&R3=0&R6=0&para=00&v6ip=&terminal_type=1&lang=zh%2Dcn&jsVersion=4.1&v=1234&lang=zh"
+    val resString=getDataFromUrl(urlString)?:"jsonpReturn({\"result\":0})"
+    Log.d("normal",resString)
+    val jsonString=resString.substringAfter("(").substringBeforeLast(")")
+    if (jsonString != "") {
+        val jsonObject = JSONObject(jsonString)
+        return (jsonObject.getInt("result") == 1)
+    } else {
+        return false
+    }
+}
+fun bjutNetworkLoginBjut(networkAccount: network_account_util):Boolean{
+    return false
+}
 class NetworkFragment : Fragment() {
 
     private var _binding: FragmentNetworkBinding? = null
     private var networkStates="unknown"
     private var networkLoginStates=false
+    private var lastRequireLoginTime=0L
     val handler = Handler(Looper.getMainLooper())
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -171,7 +220,7 @@ class NetworkFragment : Fragment() {
     }
 
 
-    private fun checkNetworkStates() {
+    private fun checkNetworkStates(networkAccount: network_account_util) {
         lifecycleScope.launch {
             val success = withContext(Dispatchers.IO) {
                 try {
@@ -179,6 +228,12 @@ class NetworkFragment : Fragment() {
                     if (isInternalIp(address.hostAddress!!)) {
                         networkStates=checkBjutLocation()
                         networkLoginStates=checkLoginStatus(networkStates)
+                        if(lastRequireLoginTime!=0L){
+                            if(System.currentTimeMillis()-lastRequireLoginTime<5000){
+                                loginNetwork(networkAccount)
+                            }
+                            lastRequireLoginTime=0L
+                        }
                     }else {
                         networkStates = "outBJUT"
                         networkLoginStates = false
@@ -247,10 +302,37 @@ class NetworkFragment : Fragment() {
         dialog.show()
     }
     private fun loginNetwork(networkAccount: network_account_util){
+        if(networkLoginStates==true){
+            showToast("已登录")
+            return
+        }
         if(!networkAccount.haveData()){
             setPassword(networkAccount)
         }
-
+        if(networkStates=="dorm"){
+            lifecycleScope.launch {
+                networkLoginStates=withContext(Dispatchers.IO) {
+                    bjutNetworkLoginDorm(networkAccount)
+                }
+                updateShow()
+            }
+        }else if(networkStates=="wifi"){
+            lifecycleScope.launch {
+                networkLoginStates=withContext(Dispatchers.IO) {
+                    bjutNetworkLoginWifi(networkAccount)
+                }
+                updateShow()
+            }
+        }else if(networkStates=="bjut"){
+            lifecycleScope.launch {
+                networkLoginStates=withContext(Dispatchers.IO) {
+                    bjutNetworkLoginBjut(networkAccount)
+                }
+                updateShow()
+            }
+        }else{
+            lastRequireLoginTime=System.currentTimeMillis()
+        }
     }
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -260,10 +342,10 @@ class NetworkFragment : Fragment() {
         _binding = FragmentNetworkBinding.inflate(inflater, container, false)
 
         val networkAccount=network_account_util(requireContext())
-        checkNetworkStates()
+        checkNetworkStates(networkAccount)
         val root: View = binding.root
         binding.btnRefresh.setOnClickListener {
-            checkNetworkStates()
+            checkNetworkStates(networkAccount)
         }
         binding.btnLogin.setOnClickListener {
             loginNetwork(networkAccount)
