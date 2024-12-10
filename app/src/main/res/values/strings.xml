@@ -13,8 +13,10 @@
     <string name="menu_library">图书馆</string>
     <string name="menu_schedule">我的课表</string>
     <string name="menu_otp">VPN OTP</string>
+    <string name="menu_network">校园网</string>
 
     <string name="shortcut_cardcode">一卡通付款码</string>
+    <string name="shortcut_network">一键登录WIFI</string>
     <string name="shortcut_schedule">课程表</string>
     <string name="shortcut_otp">VPN OTP</string>
 

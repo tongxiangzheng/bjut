@@ -29,5 +29,9 @@
             android:id="@+id/nav_otp"
             android:icon="@drawable/baseline_password_24"
             android:title="@string/menu_otp" />
+        <item
+            android:id="@+id/nav_network"
+            android:icon="@drawable/baseline_wifi_24"
+            android:title="@string/menu_network" />
     </group>
 </menu>

@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.hlwdy.bjut.databinding.FragmentLibraryBinding
 
@@ -62,7 +61,8 @@ class LibraryFragment : Fragment() {
 
         override fun createFragment(position: Int): Fragment {
             return when(position) {
-                0 -> LibraryReservationFragment()
+                0 -> LibrarySearchFragment()
+                2 -> LibraryReservationFragment()
                 else -> Fragment()
             }
         }

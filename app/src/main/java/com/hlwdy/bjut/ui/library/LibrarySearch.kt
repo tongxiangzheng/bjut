@@ -111,7 +111,7 @@ fun extractBookInfo(htmlContent: String): List<Book> {
 }
 
 
-class LibraryReservationFragment : BaseFragment() {
+class LibrarySearchFragment : BaseFragment() {
     private var _binding: FragmentLibrarySearchBinding? = null
     private val binding get() = _binding!!
     private val bookAdapter = BookAdapter { book ->

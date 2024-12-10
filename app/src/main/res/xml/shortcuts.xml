@@ -12,6 +12,17 @@
     </shortcut>
 
     <shortcut
+        android:shortcutId="shortcut4"
+        android:enabled="true"
+        android:icon="@drawable/baseline_wifi_password_24"
+        android:shortcutShortLabel="@string/shortcut_network">
+        <intent
+            android:action="openNetwork"
+            android:targetClass="com.hlwdy.bjut.RouterActivity"
+            android:targetPackage="com.hlwdy.bjut" />
+    </shortcut>
+
+    <shortcut
         android:shortcutId="shortcut2"
         android:enabled="true"
         android:icon="@drawable/baseline_table_chart_24"

@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.hlwdy.bjut.ui.card.CardFragment
+import com.hlwdy.bjut.ui.network.NetworkFragment
 import com.hlwdy.bjut.ui.otp.OtpFragment
 import com.hlwdy.bjut.ui.schedule.ScheduleFragment
 
@@ -35,6 +36,15 @@ class RouterActivity : AppCompatActivity() {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.container, fragment)
                 .commit()
+        }else if (intent?.action == "openNetwork") {
+            val fragment = NetworkFragment()
+            val bundle=Bundle()
+            bundle.putBoolean("loginNow",true)
+            fragment.arguments = bundle
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.container, fragment)
+                .commit()
+
         }
     }
 }

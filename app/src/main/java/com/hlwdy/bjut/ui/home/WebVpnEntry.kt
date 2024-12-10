@@ -61,6 +61,7 @@ class WebVpnViewActivity : AppCompatActivity() {
     private fun setupWebView() {
             webView.apply {
                 settings.javaScriptEnabled = true
+                settings.domStorageEnabled=true//localstorage
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                         if (url != null&&url.contains("http")) {

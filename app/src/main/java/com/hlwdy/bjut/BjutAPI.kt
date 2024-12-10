@@ -201,6 +201,7 @@ class BjutAPI {
 
     fun getBookBorrow(ses: String,callback: Callback){
         HttpUtils().addHeader("Cookie","eai-sess=$ses;")
+            .addHeader("x-requested-with","XMLHttpRequest")
             .addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
             .addHeader("Referer","https://itsapp.bjut.edu.cn/site/library/history")
             .get("https://itsapp.bjut.edu.cn/borrow/wap/default/info?title=",true,callback)
