@@ -60,8 +60,8 @@ object RSAUtils {
 }
 
 object BjutHttpRsa{
-    private val PRIVATE_KEY = NativeEncrypthlwdyck().keypr()
-    private val PUBLIC_KEY = NativeEncrypthlwdyck().keypu()
+    private val PRIVATE_KEY = NativeEncrypthlwdyck().getPrKey()
+    private val PUBLIC_KEY = NativeEncrypthlwdyck().getPuKey()
     fun requestDecrypt(paramString: String): String {
         return try {
             RSAUtils.decrypt(paramString, PRIVATE_KEY)

@@ -116,6 +116,15 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
 
         val navheader=binding.navView.getHeaderView(0)
+
+        var autoCheck=settings_util(this).getSettingBool(settings_util.KEY_AUTOUPDATE)
+        if(autoCheck==null){
+            autoCheck=true
+        }
+        if(autoCheck){
+            checkUpdate(true)
+        }
+
         var user_info=account_session_util(this).getUserDetails()
         navheader.findViewById<TextView>(R.id.name_text).setText(user_info[account_session_util.KEY_NAME])
         navheader.findViewById<TextView>(R.id.userid).setText(user_info[account_session_util.KEY_USERNAME])
@@ -152,9 +161,16 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    fun ShowUpdate(res: JSONObject) {
+    fun ShowUpdate(res: JSONObject,isAuto:Boolean) {
         val Curversion = packageManager.getPackageInfo(packageName, 0).versionName
         if (Curversion != res.getString("tag_name")) {
+            if(isAuto){
+                var ignoreVersion=settings_util(this).getSettingStr(settings_util.KEY_UPDATEIGNORE)
+                if(ignoreVersion==res.getString("tag_name")){
+                    appLogger.e("Info","Ignore update:$ignoreVersion")
+                    return
+                }
+            }
             val tmp = res.getJSONArray("assets")
             android.os.Handler(this.mainLooper).post {
                 val container = LinearLayout(this).apply {
@@ -173,7 +189,7 @@ class MainActivity : AppCompatActivity() {
 新版本发布日期：${res.getString("published_at")}
     更新内容：
 ${res.getString("body")}
-可用下载：  
+可用下载 (推荐arm64-v8a)：  
 """.trimIndent()
                     container.addView(this)
                 }
@@ -210,18 +226,42 @@ ${res.getString("body")}
                 }
                 scrollView.addView(container)
 
-                MaterialAlertDialogBuilder(this)
+                val dialog=MaterialAlertDialogBuilder(this)
                     .setTitle("发现新版本:" + res.getString("tag_name"))
                     .setView(scrollView)
                     .setNegativeButton("稍后再说") { dialog, _ ->
                         dialog.dismiss()
                     }
                     .setCancelable(false)
-                    .show()
+                if(isAuto){
+                    dialog.setNeutralButton("忽略此次更新") { dialog, _ ->
+                        settings_util(this).editSettingStr(settings_util.KEY_UPDATEIGNORE,res.getString("tag_name"))
+                        dialog.dismiss()
+                    }
+                }
+                dialog.show()
             }
         }else{
-            showToast("已是最新版本")
+            if(!isAuto)showToast("已是最新版本")
         }
+    }
+
+    fun checkUpdate(isAuto:Boolean){
+        ApkUpdate().getLatest(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                showToast("更新检查失败")
+            }
+            override fun onResponse(call: Call, response: Response) {
+                val res_text=response.body?.string().toString()
+                try{
+                    val res=JSONObject(res_text)
+                    ShowUpdate(res,isAuto)
+                }catch (e: JSONException){
+                    showToast("error")
+                    appLogger.e("Error", "Try CheckUpdate error",e)
+                }
+            }
+        })
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -254,21 +294,7 @@ ${res.getString("body")}
                 true
             }
             R.id.action_checkUpdate->{
-                ApkUpdate().getLatest(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        showToast("network error")
-                    }
-                    override fun onResponse(call: Call, response: Response) {
-                        val res_text=response.body?.string().toString()
-                        try{
-                            val res=JSONObject(res_text)
-                            ShowUpdate(res)
-                        }catch (e: JSONException){
-                            showToast("error")
-                            appLogger.e("Error", "Try CheckUpdate error",e)
-                        }
-                    }
-                })
+                checkUpdate(false)
                 true
             }
             else -> super.onOptionsItemSelected(item)

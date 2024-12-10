@@ -44,6 +44,7 @@ class LibraryFragment : Fragment() {
     private fun setupViewPager() {
         viewPagerAdapter = ViewPagerAdapter(this)
         binding.viewPager.adapter = viewPagerAdapter
+        binding.viewPager.isUserInputEnabled=false//禁止左右滑动
 
         // 关联 TabLayout 和 ViewPager2
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->

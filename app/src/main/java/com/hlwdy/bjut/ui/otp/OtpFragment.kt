@@ -187,6 +187,9 @@ class OtpFragment : Fragment() {
             val secret = otpD.toString().chunked(2).map { it.toInt(16).toByte() }.toByteArray()
             val otp = otpManager.generateOTP(secret)
             binding.textOtp.text=otp
+            binding.textOtptime.visibility=View.VISIBLE
+        }else{
+            binding.textOtptime.visibility=View.INVISIBLE
         }
     }
 
