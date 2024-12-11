@@ -26,7 +26,7 @@
 
 ## 应用编写说明
 
-本代码使用Android Studio kotlin编写，使用了一些安卓原生组件，相比官版日新工大，此应用优化了一些数据的缓存逻辑，整体界面使用类Google Material风格设计，且适配了系统的暗色主题，部分页面依赖于系统WebView。
+本代码使用Android Studio kotlin编写，使用了一些安卓原生组件，相比官版日新工大，此应用优化了一些数据的缓存逻辑，且集成了一些独有的功能，整体界面使用类Google Material风格设计，且适配了系统的暗色主题，部分页面依赖于系统WebView。
 
 ## 应用兼容性说明
 
@@ -40,6 +40,10 @@
   <img src="./img/3.jpg" height="600">
   <img src="./img/4.jpg" height="600">
   <img src="./img/5.jpg" height="600">
+  <img src="./img/6.jpg" height="600">
+  <img src="./img/7.jpg" height="600">
+  <img src="./img/8.jpg" height="600">
+  <img src="./img/9.jpg" height="600">
 </div>
 
 ## 应用帮助说明

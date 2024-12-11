@@ -63,6 +63,7 @@ class LibraryFragment : Fragment() {
         override fun createFragment(position: Int): Fragment {
             return when(position) {
                 0 -> LibrarySearchFragment()
+                1 -> LibraryBorrowFragment()
                 2 -> LibraryReservationFragment()
                 else -> Fragment()
             }

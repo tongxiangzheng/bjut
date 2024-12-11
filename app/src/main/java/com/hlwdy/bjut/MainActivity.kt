@@ -1,11 +1,19 @@
 package com.hlwdy.bjut
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.RippleDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.text.TextUtils
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.WindowManager
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -185,16 +193,79 @@ class MainActivity : AppCompatActivity() {
                 // 版本信息
                 TextView(this).apply {
                     text = """  
-当前版本：$Curversion
-新版本发布日期：${res.getString("published_at")}
+    发布日期：${res.getString("published_at")}
     更新内容：
+
 ${res.getString("body")}
-可用下载 (推荐arm64-v8a)：  
+
+点击下载 (推荐arm64-v8a)：  
 """.trimIndent()
                     container.addView(this)
                 }
 
                 // 为每个下载项创建按钮
+                for (i in 0 until tmp.length()) {
+                    val classObject = tmp.getJSONObject(i)
+                    val name = classObject.getString("name")
+                    val url = classObject.getString("browser_download_url")
+                    val itemLayout = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            setMargins(0, 10, 0, 10)
+                        }
+                        gravity = Gravity.CENTER_VERTICAL
+                    }
+                    ImageView(this).apply {
+                        setImageResource(R.drawable.baseline_attach_file_24)
+                        imageTintList = context.getColorStateList(
+                            context.theme.obtainStyledAttributes(
+                                intArrayOf(android.R.attr.colorControlNormal)
+                            ).getResourceId(0, 0)
+                        )
+                        layoutParams = LinearLayout.LayoutParams(48, 48).apply {
+                            marginEnd = 16
+                        }
+                        itemLayout.addView(this)
+                    }
+                    val textContainer = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            0,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f
+                        )
+                    }
+                    TextView(this).apply {
+                        text = name
+                        textSize = 16f
+                        maxLines = 3
+                        ellipsize = TextUtils.TruncateAt.END
+                        textContainer.addView(this)
+                    }
+                    itemLayout.addView(textContainer)
+                    itemLayout.apply {
+                        background = RippleDrawable(
+                            ColorStateList.valueOf(getColor(TypedValue().apply {
+                                theme.resolveAttribute(android.R.attr.colorControlHighlight, this, true)
+                            }.resourceId)),
+                            null,
+                            ColorDrawable(Color.WHITE)
+                        )
+                        isClickable = true
+                        isFocusable = true
+                        setOnClickListener {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(intent)
+                        }
+                    }
+
+                    container.addView(itemLayout)
+                }
+                /*
                 for (i in 0 until tmp.length()) {
                     val classObject = tmp.getJSONObject(i)
                     val name = classObject.getString("name")
@@ -218,6 +289,8 @@ ${res.getString("body")}
                     }
                 }
 
+                 */
+
                 val scrollView = ScrollView(this).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
@@ -227,7 +300,7 @@ ${res.getString("body")}
                 scrollView.addView(container)
 
                 val dialog=MaterialAlertDialogBuilder(this)
-                    .setTitle("发现新版本:" + res.getString("tag_name"))
+                    .setTitle("可更新:$Curversion -> " + res.getString("tag_name")+"(new)")
                     .setView(scrollView)
                     .setNegativeButton("稍后再说") { dialog, _ ->
                         dialog.dismiss()

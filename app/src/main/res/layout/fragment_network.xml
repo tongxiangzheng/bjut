@@ -41,7 +41,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="未知网络"
+                    android:text="检测中"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="?attr/textColor" />
@@ -125,7 +125,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/baseline_password_24"
+                        android:src="@drawable/baseline_key_24"
                         app:tint="?attr/colorPrimary" />
 
                     <TextView

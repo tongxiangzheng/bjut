@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
+import android.util.Log
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
@@ -127,7 +128,7 @@ private fun checkBjutLocation():String{
         return "wifi"
     }
     //测试是否为其他情况（例如有线网）
-    val res= checkWebsiteAccessibility("http://lgn.bjut.edu.cn")
+    val res= checkWebsiteAccessibility("http://172.30.201.2")
     if(res){
         return "bjut"
     }
@@ -156,6 +157,11 @@ fun checkLoginStatusDorm():Pair<Boolean,Boolean> {
         return Pair(false,false)
     }
 }
+fun checkLoginStatusWifiIpv6():Boolean{
+    val urlString="https://lgn6.bjut.edu.cn"
+    val htmlData=getDataFromUrl(urlString)?:return false
+    return htmlData.contains("<!--Dr.COMWebLoginID_1.htm-->")
+}
 fun checkLoginStatusWifi():Pair<Boolean,Boolean> {
     val urlString="https://wlgn.bjut.edu.cn/drcom/chkstatus?callback=dr1002"
     val resString = getDataFromUrl(urlString) ?: return Pair(false,false)
@@ -165,7 +171,7 @@ fun checkLoginStatusWifi():Pair<Boolean,Boolean> {
             val jsonObject = JSONObject(jsonString)
             val res=(jsonObject.getInt("result") == 1)
             if(res){
-                Pair(true,checkLoginStatusBjut().second)
+                Pair(true,checkLoginStatusWifiIpv6())
             }else{
                 Pair(false,false)
             }
@@ -311,13 +317,14 @@ class NetworkFragment : BaseFragment() {
     }
 
 
-    private fun checkNetworkStates(networkAccount: network_account_util) {
-        //showLoading()
+    private fun checkNetworkStates(networkAccount: network_account_util,showToast: Boolean) {
+        showLoading()
         lifecycleScope.launch {
             val success = withContext(Dispatchers.IO) {
                 try {
-                    val address = InetAddress.getByName("bjut.edu.cn")
-                    if (isInternalIp(address.hostAddress!!)) {
+                    val addresses = InetAddress.getAllByName("www.bjut.edu.cn")
+                    //有一个是内网地址即可
+                    if (addresses.any { isInternalIp(it.hostAddress!!) }) {
                         networkStates=checkBjutLocation()
                         val pair=checkLoginStatus(networkStates)
                         networkLoginipv4States=pair.first
@@ -338,6 +345,7 @@ class NetworkFragment : BaseFragment() {
                         networkStates = "outBJUT"
                         networkLoginipv4States=false
                         networkLoginipv6States=false
+                        networkFlow=-1
                     }
                     true
                 } catch (e: Exception) {
@@ -350,14 +358,16 @@ class NetworkFragment : BaseFragment() {
                 networkLoginipv6States=false
                 networkFlow=-1
             }
-            //hideLoading()
-            showToast("刷新完成")
+            hideLoading()
+            if(showToast) {
+                showToast("刷新完成")
+            }
             updateShow()
         }
     }
     private fun setPassword(networkAccount: network_account_util){
         val builder = MaterialAlertDialogBuilder(requireContext())
-        builder.setTitle("保存密码")
+        builder.setTitle(if(networkAccount.haveData())"更新保存的密码" else "保存密码 (首次)")
         val layout = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 32, 32, 32)
@@ -385,6 +395,7 @@ class NetworkFragment : BaseFragment() {
         }
         val password = TextInputEditText(requireContext()).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            //setText(networkAccount.getUserPwd())
         }
         passwordLayout.addView(password)
 
@@ -483,7 +494,11 @@ class NetworkFragment : BaseFragment() {
             networkLoginipv6States=withContext(Dispatchers.IO) {
                 bjutNetworkLoginBjutIpv6(networkAccount)
             }
-            updateShow()
+            if(networkLoginipv6States) {
+                updateShow()
+            }else{
+                showToast("登录失败")
+            }
         }
     }
     override fun onCreateView(
@@ -499,10 +514,10 @@ class NetworkFragment : BaseFragment() {
             lastRequireLoginTime=System.currentTimeMillis()
             //checkNetworkStates()会在确认网络状态后执行登录
         }
-        checkNetworkStates(networkAccount)
+        checkNetworkStates(networkAccount,false)
         val root: View = binding.root
         binding.btnRefresh.setOnClickListener {
-            checkNetworkStates(networkAccount)
+            checkNetworkStates(networkAccount,true)
         }
         binding.btnLogin.setOnClickListener {
             loginNetwork(networkAccount)
