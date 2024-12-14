@@ -26,6 +26,9 @@ import com.hlwdy.bjut.databinding.FragmentNetworkBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.selects.select
 import java.net.InetAddress
 import org.json.JSONObject
 import com.hlwdy.bjut.network_account_util
@@ -34,13 +37,13 @@ import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.pow
 
-fun isInternalIp(ip: String): Boolean {
+fun isInternalIp(ip: String?): Boolean {
     val privateIpPatterns = listOf(
         "^10\\..*".toRegex(),
         "^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*".toRegex(),
         "^192\\.168\\..*".toRegex()
     )
-    return privateIpPatterns.any { it.matches(ip) }
+    return ip!=null&&privateIpPatterns.any { it.matches(ip) }
 }
 fun checkWebsiteAccessibility(urlString: String): Boolean {
     return try {
@@ -116,23 +119,42 @@ fun postUrl(urlString: String, params: Set<String>): String? {
         return null
     }
 }
-private fun checkBjutLocation():String{
-    //测试是否为宿舍光猫
-    val bres= checkWebsiteAccessibility("http://10.21.221.98")
-    if(bres){
-        return "dorm"
+suspend fun checkBjutLocation():String{
+    return coroutineScope {
+        //测试是否为宿舍光猫
+        val bPingDeferred = async(Dispatchers.IO){checkWebsiteAccessibility("http://10.21.221.98")}
+        //测试是否为bjut_wifi
+        val wPingDeferred = async(Dispatchers.IO){checkWebsiteAccessibility("http://wlgn.bjut.edu.cn")}
+        //测试是否为其他情况（例如有线网）
+        val lPingDeferred = async(Dispatchers.IO){checkWebsiteAccessibility("http://172.30.201.2")}
+
+        val bwPingRes=select {
+            bPingDeferred.onAwait{
+                if(it){
+                    "dorm"
+                }else if(wPingDeferred.await()){
+                    "wifi"
+                }else{""}
+            }
+            wPingDeferred.onAwait{
+                if(it){
+                    "wifi"
+                }else if(bPingDeferred.await()){
+                    "dorm"
+                }else{""}
+            }
+        }
+        if(bwPingRes!=""){
+            bwPingRes
+        }else {
+            val lres = lPingDeferred.await()
+            if (lres) {
+                "bjut"
+            }else {
+                "unknownType"
+            }
+        }
     }
-    //测试是否为bjut_wifi
-    val wres= checkWebsiteAccessibility("http://wlgn.bjut.edu.cn")
-    if(wres){
-        return "wifi"
-    }
-    //测试是否为其他情况（例如有线网）
-    val res= checkWebsiteAccessibility("http://172.30.201.2")
-    if(res){
-        return "bjut"
-    }
-    return "unknownType"
 }
 fun checkLoginStatusBjut():Pair<Boolean,Boolean> {
     val urlString="https://lgn.bjut.edu.cn"
@@ -262,6 +284,18 @@ fun formatFlowSize(sizeInBytes: Long): String {
     val pre = "KMGTPE"[exp - 1] + "i"
     return String.format(Locale("zh", "CN"),"%.2f %sB", sizeInBytes / unit.toDouble().pow(exp.toDouble()), pre)
 }
+fun checkInBjut():Int{
+   return try {
+        val addresses = InetAddress.getAllByName("www.bjut.edu.cn")
+        if(addresses.any { isInternalIp(it.hostAddress) }) {
+            1
+        }else {
+            0
+        }
+    }catch (e: Exception) {
+        -1
+    }
+}
 class NetworkFragment : BaseFragment() {
 
     private var _binding: FragmentNetworkBinding? = null
@@ -317,49 +351,40 @@ class NetworkFragment : BaseFragment() {
     }
 
 
-    private fun checkNetworkStates(networkAccount: network_account_util,showToast: Boolean) {
+    private fun checkNetworkStates(networkAccount: network_account_util,showToastFlag: Boolean) {
         showLoading()
         lifecycleScope.launch {
-            val success = withContext(Dispatchers.IO) {
-                try {
-                    val addresses = InetAddress.getAllByName("www.bjut.edu.cn")
-                    //有一个是内网地址即可
-                    if (addresses.any { isInternalIp(it.hostAddress!!) }) {
-                        networkStates=checkBjutLocation()
-                        val pair=checkLoginStatus(networkStates)
-                        networkLoginipv4States=pair.first
-                        networkLoginipv6States=pair.second
-                        if(networkLoginipv4States) {
-                            networkFlow=checkNetworkFlow()
-                        }else{
-                            networkFlow=-1
-                            if (lastRequireLoginTime != 0L) {
-                                if (System.currentTimeMillis() - lastRequireLoginTime < 5000) {
-                                    loginNetwork(networkAccount)
-                                }
-                                lastRequireLoginTime = 0L
-                            }
-
+            val inBjut = withContext(Dispatchers.IO) { checkInBjut() }
+            if (inBjut == 1) {
+                networkStates=withContext(Dispatchers.IO) { checkBjutLocation() }
+                val pair=withContext(Dispatchers.IO) { checkLoginStatus(networkStates) }
+                networkLoginipv4States=pair.first
+                networkLoginipv6States=pair.second
+                if(networkLoginipv4States) {
+                    networkFlow=withContext(Dispatchers.IO) { checkNetworkFlow() }
+                }else{
+                    networkFlow=-1
+                    if (lastRequireLoginTime != 0L) {
+                        if (System.currentTimeMillis() - lastRequireLoginTime < 5000) {
+                            loginNetwork(networkAccount)
                         }
-                    }else {
-                        networkStates = "outBJUT"
-                        networkLoginipv4States=false
-                        networkLoginipv6States=false
-                        networkFlow=-1
+                        lastRequireLoginTime = 0L
                     }
-                    true
-                } catch (e: Exception) {
-                    false
+
                 }
-            }
-            if(!success) {
+            } else if (inBjut == 0) {
+                networkStates = "outBJUT"
+                networkLoginipv4States = false
+                networkLoginipv6States = false
+                networkFlow = -1
+            } else if (inBjut == -1) {
                 networkStates = "noNetwork"
-                networkLoginipv4States=false
-                networkLoginipv6States=false
-                networkFlow=-1
+                networkLoginipv4States = false
+                networkLoginipv6States = false
+                networkFlow = -1
             }
             hideLoading()
-            if(showToast) {
+            if(showToastFlag) {
                 showToast("刷新完成")
             }
             updateShow()
