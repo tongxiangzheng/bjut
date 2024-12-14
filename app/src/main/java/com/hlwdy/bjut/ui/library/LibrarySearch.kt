@@ -210,9 +210,10 @@ class LibrarySearchFragment : BaseFragment() {
 
         binding.searchButton.setOnClickListener {
             val searchQuery = binding.searchInput.text.toString()
-            if(searchQuery==""){
+            if(searchQuery.trim()==""){
                 showToast("搜索内容不可为空")
             }else{
+                isLoading=true
                 setSearchControlsEnabled(false)
                 bookAdapter.submitList(emptyList())
                 binding.noResultsText.visibility = View.GONE
@@ -223,6 +224,7 @@ class LibrarySearchFragment : BaseFragment() {
                         showToast("network error")
                     }
                     override fun onResponse(call: Call, response: Response) {
+                        Curpar="F/([^?]+)".toRegex().find(response.request.url.toString())?.groupValues?.get(1).toString()
                         val res=response.body?.string().toString()
                         val results=extractBookInfo(res)
                         activity?.let { fragmentActivity ->
@@ -235,6 +237,8 @@ class LibrarySearchFragment : BaseFragment() {
                                     }
                                     binding.loadingIndicator.visibility = View.GONE
                                     setSearchControlsEnabled(true)
+                                    isLoading=false
+                                    Curpage=1
                                 }
                             }
                         }
@@ -254,10 +258,59 @@ class LibrarySearchFragment : BaseFragment() {
         }
     }
 
+    private var isLoading = false
+    private var Curpage=0
+    private var Curpar=""
+
     private fun setupRecyclerViewScroll() {
         var lastScrollY = 0
         binding.searchResultsRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                val lastVisibleItem = layoutManager.findLastVisibleItemPosition()
+                val totalItemCount = layoutManager.itemCount
+                if (!isLoading&&lastVisibleItem >= totalItemCount - 1) {
+                    if(Curpage!=-1){
+                        Curpage++
+                        isLoading=true
+                        setSearchControlsEnabled(false)
+                        binding.loadingIndicator.visibility = View.VISIBLE
+                        BjutAPI().getBookListPage(Curpar,(Curpage*20+1-20).toString(),object :
+                            Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+                                showToast("network error")
+                            }
+                            override fun onResponse(call: Call, response: Response) {
+                                val res=response.body?.string().toString()
+                                if(res.contains("超出集合的记录数。</div>")){//最后一页
+                                    showToast("无更多内容")
+                                    Curpage=-1
+                                }else{
+                                    val results=extractBookInfo(res)
+                                    activity?.let { fragmentActivity ->
+                                        Handler(Looper.getMainLooper()).post {
+                                            if (isAdded) {
+                                                bookAdapter.appendItems(results)
+                                            }
+                                        }
+                                    }
+                                    showToast("第 $Curpage 页, "+(Curpage*20+1-20).toString()+"-"+(Curpage*20).toString())
+                                }
+                                activity?.let { fragmentActivity ->
+                                    Handler(Looper.getMainLooper()).post {
+                                        if (isAdded) {
+                                            binding.loadingIndicator.visibility = View.GONE
+                                            setSearchControlsEnabled(true)
+                                            isLoading=false
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    }
+                }
+
                 // dy > 0 表示向上滚动，dy < 0 表示向下滚动
                 if (dy > 30 && isSearchBarVisible) {  // 向上滚动，隐藏搜索栏
                     hideSearchBar()
@@ -322,6 +375,10 @@ class BookAdapter(
                 bookID.text="编号：${book.id}"
             }
         }
+    }
+
+    fun appendItems(newItems: List<Book>) {
+        submitList(currentList + newItems)
     }
 }
 

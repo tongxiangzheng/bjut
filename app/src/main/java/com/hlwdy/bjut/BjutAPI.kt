@@ -194,6 +194,12 @@ class BjutAPI {
             )
     }
 
+    fun getBookListPage(par: String,jump:String,callback: Callback){
+        HttpUtils().addHeader("Cookie","")
+            .addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
+            .get("https://libaleph.bjut.edu.cn/F/$par?func=short-jump&jump=$jump",true,callback)
+    }
+
     fun getCardInfo(id: String,callback: Callback){
         HttpUtils().addHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
             .get("https://ydapp.bjut.edu.cn/home/openHomePageApp?openid=$id",true,callback)

@@ -1,5 +1,6 @@
 package com.hlwdy.bjut.ui
 
+import BiometricHelper
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -148,7 +149,11 @@ class LoginActivity : BaseActivity() {
 
         val context=this
         scope.launch {
-            if(account_session_util(context).isLoggedIn())jumpToMain()
+            if(account_session_util(context).isLoggedIn()){
+                BiometricHelper(context).authenticate({//跳转生物验证
+                    jumpToMain()
+                })
+            }
             else {
                 rootLayout.removeView(overlayView)
                 setContentView(R.layout.login_page)

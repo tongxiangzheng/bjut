@@ -11,6 +11,7 @@ class settings_util(context: Context) {
         const val PREF_NAME = "AppSettings"
         const val KEY_AUTOUPDATE = "autoupdate"
         const val KEY_UPDATEIGNORE = "updateignore"
+        const val KEY_BIOENCRYPT = "bioencrypt"
     }
 
     fun getSettingBool(key: String): Boolean? {

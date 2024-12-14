@@ -240,7 +240,7 @@ class CardFragment : BaseFragment() {
                         appLogger.e("Info", "CardLoad ok:$tk")
                         val cookieManager = CookieManager.getInstance()
                         cookieManager.setAcceptCookie(true)
-                        //cookieManager.removeSessionCookies(null)
+                        cookieManager.removeSessionCookies(null)
                         cookieManager.setCookie("ydapp.bjut.edu.cn", "JSESSIONID=$tk; path=/")
                         cookieManager.flush()
                         if(isJumpCode){
