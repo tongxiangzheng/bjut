@@ -58,7 +58,7 @@ class RouterActivity : AppCompatActivity() {
                     .commit()
 
             }
-        })
+        },{finish()})
 
     }
 }

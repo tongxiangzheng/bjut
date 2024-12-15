@@ -152,7 +152,7 @@ class LoginActivity : BaseActivity() {
             if(account_session_util(context).isLoggedIn()){
                 BiometricHelper(context).authenticate({//跳转生物验证
                     jumpToMain()
-                })
+                },{finish()})
             }
             else {
                 rootLayout.removeView(overlayView)

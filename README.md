@@ -18,6 +18,7 @@
 * [x] 桌面APP长按快捷菜单
 * [x] 图书馆相关功能
 * [x] 校内WiFi一键登录
+* [x] 生物验证解锁
 * [ ] 校内邮箱浏览
 * [ ] 办事大厅
 * [ ] 重要消息提示
@@ -30,7 +31,7 @@
 
 ## 应用兼容性说明
 
-本app完全支持armeabi-v7a, arm64-v8a, x86和x86_64安卓架构，理论上较好支持Android 7.1+版本 (Android API level 25)。
+本app完全支持armeabi-v7a, arm64-v8a, x86和x86_64安卓架构，理论上较好支持Android 7.1+版本 (Android API level 25)，生物验证仅支持Android 9.0+版本。
 
 ## 应用内部分截图
 
