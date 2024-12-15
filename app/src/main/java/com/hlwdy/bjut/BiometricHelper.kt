@@ -32,7 +32,7 @@ class BiometricHelper(private val activity: AppCompatActivity) {
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    Toast.makeText(activity, "认证尝试失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, "尝试验证失败", Toast.LENGTH_SHORT).show()
                     //pendingAction = null
                     //允许继续尝试
                 }
