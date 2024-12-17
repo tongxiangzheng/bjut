@@ -36,6 +36,7 @@ import kotlinx.coroutines.selects.select
 import java.net.InetAddress
 import org.json.JSONObject
 import com.hlwdy.bjut.network_account_util
+import kotlinx.coroutines.delay
 import java.io.DataOutputStream
 import java.util.Locale
 import kotlin.math.ln
@@ -308,6 +309,9 @@ class NetworkFragment : BaseFragment() {
     private var networkLoginipv6States=false
     private var networkFlow=-1L
     private var lastRequireLoginTime=0L
+    private var wifiInterface:Network?=null
+    private var networkCallback: ConnectivityManager.NetworkCallback? =null
+    private var connectivityManager:ConnectivityManager?=null
     val handler = Handler(Looper.getMainLooper())
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -353,41 +357,58 @@ class NetworkFragment : BaseFragment() {
             binding.networkFlowMonitor.setText("")
         }
     }
-    private fun bindNetworkToWifi(): ConnectivityManager.NetworkCallback? {
+    private fun bindWifi(){
         try {
-            val connectivityManager =
-                requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
+            if(connectivityManager ==null){
+                connectivityManager=requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            }
+            if(networkCallback==null) {
+                networkCallback = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        wifiInterface = network
+                    }
+                    override fun onLost(network: Network) {
+                        wifiInterface = null
+                        connectivityManager!!.bindProcessToNetwork(null)
+                    }
+                }
+            }
             val request = NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
-            val networkCallback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    connectivityManager.bindProcessToNetwork(network)
-                }
-                override fun onLost(network: Network) {
-                    connectivityManager.bindProcessToNetwork(null)
-                }
-            }
-            connectivityManager.requestNetwork(request, networkCallback)
-            return networkCallback
+            connectivityManager!!.requestNetwork(request, networkCallback!!)
         }catch (e:Exception){
-            showToast("应用未成功绑定WIFI网络")
-            return null
+            showToast("未能绑定wifi网络")
         }
     }
-    private fun unBindNetworkToWifi(networkCallback: ConnectivityManager.NetworkCallback?){
-        val connectivityManager =
-            requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        connectivityManager.bindProcessToNetwork(null)
-        networkCallback?.let{connectivityManager.unregisterNetworkCallback(it)}
+    private fun unBindWifi(){
+        networkCallback?.let{connectivityManager!!.unregisterNetworkCallback(it)}
+        wifiInterface=null
+    }
+    private fun bindNetworkToWifi(){
+        wifiInterface?.let {connectivityManager!!.bindProcessToNetwork(it)}
+    }
+    private fun unBindNetworkToWifi(){
+        connectivityManager!!.bindProcessToNetwork(null)
     }
 
     private fun checkNetworkStates(networkAccount: network_account_util,showToastFlag: Boolean) {
         showLoading()
-        val networkCallback=bindNetworkToWifi()
         lifecycleScope.launch {
+            for (i in 0..2) {
+                if(wifiInterface==null){
+                    withContext(Dispatchers.IO) {
+                        delay(10L)
+                    }
+                }else{
+                    break
+                }
+            }
+            if(wifiInterface==null){
+                showToast("未使用wifi网络")
+            }
+            bindNetworkToWifi()
             val inBjut = withContext(Dispatchers.IO) { checkInBjut() }
             if (inBjut == 1) {
                 networkStates=withContext(Dispatchers.IO) { checkBjutLocation() }
@@ -418,7 +439,7 @@ class NetworkFragment : BaseFragment() {
                 networkFlow = -1
             }
             hideLoading()
-            unBindNetworkToWifi(networkCallback)
+            unBindNetworkToWifi()
             if(showToastFlag) {
                 showToast("刷新完成")
             }
@@ -485,7 +506,7 @@ class NetworkFragment : BaseFragment() {
         if(!networkAccount.haveData()){
             setPassword(networkAccount)
         }
-        val networkCallback=bindNetworkToWifi()
+        bindNetworkToWifi()
         when (networkStates) {
             "dorm" -> {
                 lifecycleScope.launch {
@@ -496,12 +517,15 @@ class NetworkFragment : BaseFragment() {
                     networkLoginipv6States=pair.second
                     if(networkLoginipv4States){
                         updateShow()
+                        withContext(Dispatchers.IO) {
+                            delay(10L)
+                        }
                         networkFlow=withContext(Dispatchers.IO) {checkNetworkFlow()}
                         updateShow()
                     }else{
                         showToast("登录失败")
                     }
-                    unBindNetworkToWifi(networkCallback)
+                    unBindNetworkToWifi()
                 }
             }
             "wifi" -> {
@@ -513,12 +537,15 @@ class NetworkFragment : BaseFragment() {
                     networkLoginipv6States=pair.second
                     if(networkLoginipv4States){
                         updateShow()
+                        withContext(Dispatchers.IO) {
+                            delay(10L)
+                        }
                         networkFlow=withContext(Dispatchers.IO) {checkNetworkFlow()}
                         updateShow()
                     }else{
                         showToast("登录失败")
                     }
-                    unBindNetworkToWifi(networkCallback)
+                    unBindNetworkToWifi()
                 }
             }
             "bjut" -> {
@@ -530,17 +557,20 @@ class NetworkFragment : BaseFragment() {
                     networkLoginipv6States=pair.second
                     if(networkLoginipv4States){
                         updateShow()
+                        withContext(Dispatchers.IO) {
+                            delay(10L)
+                        }
                         networkFlow=withContext(Dispatchers.IO) {checkNetworkFlow()}
                         updateShow()
                     }else{
                         showToast("登录失败")
                     }
-                    unBindNetworkToWifi(networkCallback)
+                    unBindNetworkToWifi()
                 }
             }
             else -> {
                 lastRequireLoginTime=System.currentTimeMillis()
-                unBindNetworkToWifi(networkCallback)
+                unBindNetworkToWifi()
             }
         }
     }
@@ -555,7 +585,7 @@ class NetworkFragment : BaseFragment() {
         if(networkStates!="wifi") {
             return
         }
-        val networkCallback=bindNetworkToWifi()
+        bindNetworkToWifi()
         lifecycleScope.launch {
             networkLoginipv6States=withContext(Dispatchers.IO) {
                 bjutNetworkLoginBjutIpv6(networkAccount)
@@ -565,7 +595,7 @@ class NetworkFragment : BaseFragment() {
             }else{
                 showToast("登录失败")
             }
-            unBindNetworkToWifi(networkCallback)
+            unBindNetworkToWifi()
         }
     }
     override fun onCreateView(
@@ -574,7 +604,7 @@ class NetworkFragment : BaseFragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentNetworkBinding.inflate(inflater, container, false)
-
+        bindWifi()
         val networkAccount=network_account_util(requireContext())
         val loginNow = arguments?.getBoolean("loginNow")?:false
         if(loginNow){
@@ -602,5 +632,9 @@ class NetworkFragment : BaseFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+    override fun onDestroy(){
+        super.onDestroy()
+        unBindWifi()
     }
 }
