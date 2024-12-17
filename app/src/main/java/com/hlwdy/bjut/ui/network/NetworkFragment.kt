@@ -1,10 +1,14 @@
 package com.hlwdy.bjut.ui.network
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.Fragment
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
@@ -349,10 +353,40 @@ class NetworkFragment : BaseFragment() {
             binding.networkFlowMonitor.setText("")
         }
     }
+    private fun bindNetworkToWifi(): ConnectivityManager.NetworkCallback? {
+        try {
+            val connectivityManager =
+                requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+            val request = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            val networkCallback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    connectivityManager.bindProcessToNetwork(network)
+                }
+                override fun onLost(network: Network) {
+                    connectivityManager.bindProcessToNetwork(null)
+                }
+            }
+            connectivityManager.requestNetwork(request, networkCallback)
+            return networkCallback
+        }catch (e:Exception){
+            showToast("应用未成功绑定WIFI网络")
+            return null
+        }
+    }
+    private fun unBindNetworkToWifi(networkCallback: ConnectivityManager.NetworkCallback?){
+        val connectivityManager =
+            requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        connectivityManager.bindProcessToNetwork(null)
+        networkCallback?.let{connectivityManager.unregisterNetworkCallback(it)}
+    }
 
     private fun checkNetworkStates(networkAccount: network_account_util,showToastFlag: Boolean) {
         showLoading()
+        val networkCallback=bindNetworkToWifi()
         lifecycleScope.launch {
             val inBjut = withContext(Dispatchers.IO) { checkInBjut() }
             if (inBjut == 1) {
@@ -384,6 +418,7 @@ class NetworkFragment : BaseFragment() {
                 networkFlow = -1
             }
             hideLoading()
+            unBindNetworkToWifi(networkCallback)
             if(showToastFlag) {
                 showToast("刷新完成")
             }
@@ -450,6 +485,7 @@ class NetworkFragment : BaseFragment() {
         if(!networkAccount.haveData()){
             setPassword(networkAccount)
         }
+        val networkCallback=bindNetworkToWifi()
         when (networkStates) {
             "dorm" -> {
                 lifecycleScope.launch {
@@ -465,6 +501,7 @@ class NetworkFragment : BaseFragment() {
                     }else{
                         showToast("登录失败")
                     }
+                    unBindNetworkToWifi(networkCallback)
                 }
             }
             "wifi" -> {
@@ -481,6 +518,7 @@ class NetworkFragment : BaseFragment() {
                     }else{
                         showToast("登录失败")
                     }
+                    unBindNetworkToWifi(networkCallback)
                 }
             }
             "bjut" -> {
@@ -497,10 +535,12 @@ class NetworkFragment : BaseFragment() {
                     }else{
                         showToast("登录失败")
                     }
+                    unBindNetworkToWifi(networkCallback)
                 }
             }
             else -> {
                 lastRequireLoginTime=System.currentTimeMillis()
+                unBindNetworkToWifi(networkCallback)
             }
         }
     }
@@ -515,6 +555,7 @@ class NetworkFragment : BaseFragment() {
         if(networkStates!="wifi") {
             return
         }
+        val networkCallback=bindNetworkToWifi()
         lifecycleScope.launch {
             networkLoginipv6States=withContext(Dispatchers.IO) {
                 bjutNetworkLoginBjutIpv6(networkAccount)
@@ -524,6 +565,7 @@ class NetworkFragment : BaseFragment() {
             }else{
                 showToast("登录失败")
             }
+            unBindNetworkToWifi(networkCallback)
         }
     }
     override fun onCreateView(
